@@ -5,6 +5,7 @@ void Brick::Init(glm::vec2 pos, glm::vec2 size, uint32_t lives, BrickType type)
   this->lives = lives;
   this->pos = pos;
   this->size = size;
+  this->type = type;
 }
 
 void Brick::Draw()

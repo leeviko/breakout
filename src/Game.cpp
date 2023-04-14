@@ -6,7 +6,6 @@
 
 Game::Game(uint32_t width, uint32_t height) : Width(width), Height(height), player(GameObject(renderer))
 {
-  bricks.reserve(sizeof(Brick) * 100);
 }
 Game::~Game()
 {
@@ -44,7 +43,7 @@ void Game::Init()
       Brick brick(renderer);
       brick.Init({boardStartPos.x + (j * totalBrickSize.x), boardStartPos.y + (i * totalBrickSize.y)}, {brickWidth, brickHeight}, brickLives);
 
-      bricks[brickCount] = brick;
+      bricks.push_back(brick);
       brickCount++;
     }
   }
@@ -85,6 +84,21 @@ void Game::Update(float dt)
   for (uint32_t i = 0; i < balls.size(); i++)
   {
     balls[i].CheckCollision(player);
+
+    for (uint32_t j = 0; j < bricks.size(); j++)
+    {
+      balls[i].CheckCollision(bricks[j]);
+      if (bricks[j].lives <= 0)
+      {
+        if (bricks[j].type == ADD_BALL)
+        {
+          Ball ball(renderer);
+          ball.Init(player.pos, Width, Height);
+          balls.push_back(ball);
+        }
+        bricks.erase(bricks.begin() + j);
+      }
+    }
   }
 }
 void Game::Render()
@@ -94,8 +108,7 @@ void Game::Render()
   renderer.BeginBatch();
 
   player.Draw();
-
-  for (uint32_t i = 0; i < sizeof(bricks.data()) * sizeof(Brick); i++)
+  for (uint32_t i = 0; i < bricks.size(); i++)
   {
     bricks[i].Draw();
   }

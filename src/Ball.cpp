@@ -22,7 +22,6 @@ void Ball::Init(glm::vec2 playerPos, uint32_t winWidth, uint32_t winHeight)
 void Ball::Move(float dt)
 {
   glm::vec2 normalizedVel = glm::normalize(this->velocity);
-
   this->pos += normalizedVel * this->speed * dt;
 }
 
@@ -31,11 +30,13 @@ void Ball::CheckCollision(const GameObject &paddle)
   glm::vec2 borderNormal = {0.0f, 0.0f};
   glm::vec2 reflectedVel;
 
-  if (pos.x < 0.0f)
+  float ballLeft = pos.x - size.x / 2.0f;
+
+  if (ballLeft < 0.0f)
   {
     borderNormal = {-1.0f, 0.0f};
   }
-  else if (pos.x + size.x > winWidth)
+  else if (ballLeft + size.x > winWidth)
   {
     borderNormal = {1.0f, 0.0f};
   }
@@ -45,9 +46,9 @@ void Ball::CheckCollision(const GameObject &paddle)
     borderNormal = {0.0f, 1.0f};
   }
 
-  float left = paddle.pos.x - paddle.size.x / 2;
+  float paddleLeft = paddle.pos.x - paddle.size.x / 2.0f;
 
-  bool collisionX = pos.x + size.x >= left && left + paddle.size.x >= pos.x;
+  bool collisionX = ballLeft + size.x >= paddleLeft && paddleLeft + paddle.size.x >= ballLeft;
   bool collisionY = pos.y + size.y >= paddle.pos.y && paddle.pos.y + paddle.size.y >= pos.y;
 
   if (collisionX && collisionY)
@@ -64,4 +65,30 @@ void Ball::CheckCollision(const GameObject &paddle)
 
   this->pos += reflectedVel;
   this->velocity = reflectedVel;
+}
+
+void Ball::CheckCollision(Brick &brick)
+{
+  float brickLeft = brick.pos.x - brick.size.x / 2.0f;
+  float ballLeft = pos.x - size.x / 2.0f;
+
+  bool collisionX = ballLeft + size.x >= brickLeft && brickLeft + brick.size.x >= ballLeft;
+  bool collisionY = pos.y + size.y >= brick.pos.y && brick.pos.y + brick.size.y >= pos.y;
+  if (collisionX && collisionY)
+  {
+    if (brick.lives > 0)
+    {
+      brick.lives--;
+    }
+
+    if (brick.lives == 0)
+    {
+      return;
+    }
+
+    glm::vec2 reflectedVel = glm::reflect(this->velocity, {0.0f, 1.0f});
+
+    this->pos += reflectedVel;
+    this->velocity = reflectedVel;
+  }
 }

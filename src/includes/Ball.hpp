@@ -14,4 +14,5 @@ public:
   void Move(float dt);
 
   void CheckCollision(const GameObject &paddle);
+  void CheckCollision(Brick &brick);
 };
