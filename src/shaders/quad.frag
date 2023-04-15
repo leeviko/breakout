@@ -11,7 +11,7 @@ void main()
 {
   int index = int(v_TexIndex);
 
-  vec4 texColor =texture(u_Textures[index], v_TexCoord) * v_Color; 
+  vec4 texColor = texture(u_Textures[index], v_TexCoord) * v_Color; 
   
   if(texColor.a <= 0.0)
     discard;

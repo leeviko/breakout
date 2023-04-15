@@ -3,8 +3,9 @@
 #include "GameObject.hpp"
 #include <GLFW/glfw3.h>
 #include <random>
+#include "TextRenderer.hpp"
 
-Game::Game(uint32_t width, uint32_t height) : Width(width), Height(height), player(GameObject(renderer))
+Game::Game(uint32_t width, uint32_t height) : Width(width), Height(height), player(GameObject(renderer)), state(GAME_MENU)
 {
 }
 Game::~Game()
@@ -15,11 +16,16 @@ Game::~Game()
 
 void Game::Init()
 {
-  ResourceManager::LoadShader("D:/Dev/Cpp/OpenGL/breakout/src/shaders/shader.vert", "D:/Dev/Cpp/OpenGL/breakout/src/shaders/shader.frag", "quad");
+  ResourceManager::LoadShader("D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.vert", "D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.frag", "quad");
 
   Renderer renderer;
   this->renderer = renderer;
   this->renderer.Init();
+
+  TextRenderer textRenderer;
+  this->textRenderer = textRenderer;
+  textRenderer.Init();
+  textRenderer.LoadCharacters();
 
   this->brickHeight = 25.0f;
   this->brickWidth = 100.0f;
@@ -29,7 +35,6 @@ void Game::Init()
 
   uint32_t rows = 8;
   uint32_t columns = 10;
-  uint32_t brickCount = 0;
 
   glm::vec2 totalBrickSize = glm::vec2(brickWidth, brickHeight) + glm::vec2(brickPadding, brickPadding);
   glm::vec2 boardStartPos = {Width - (columns * totalBrickSize.x), brickHeight + 25.0f};
@@ -44,7 +49,6 @@ void Game::Init()
       brick.Init({boardStartPos.x + (j * totalBrickSize.x), boardStartPos.y + (i * totalBrickSize.y)}, {brickWidth, brickHeight}, brickLives);
 
       bricks.push_back(brick);
-      brickCount++;
     }
   }
 
@@ -53,7 +57,7 @@ void Game::Init()
 
   for (uint32_t i = 0; i < 5; i++)
   {
-    std::uniform_real_distribution<float> brickIndex(0, brickCount);
+    std::uniform_real_distribution<float> brickIndex(0, bricks.size());
 
     bricks[brickIndex(gen)].type = ADD_BALL;
   }

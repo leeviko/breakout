@@ -1,16 +1,27 @@
 #pragma once
 #include <iostream>
 #include "Renderer.hpp"
+#include "TextRenderer.hpp"
 #include "GameObject.hpp"
 #include <vector>
 #include "Ball.hpp"
 #include "Brick.hpp"
 
+enum GameState
+{
+  GAME_WON,
+  GAME_LOST,
+  GAME_ACTIVE,
+  GAME_MENU
+};
+
 class Game
 {
 private:
+  TextRenderer textRenderer;
   Renderer renderer;
   uint32_t Width, Height;
+  GameState state;
 
   float brickWidth, brickHeight;
   std::vector<Brick> bricks;
