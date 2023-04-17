@@ -31,5 +31,6 @@ public:
   void Flush();
 
   void DrawQuad(const glm::vec2 &pos, const glm::vec2 &size, const glm::vec4 &color);
+  void DrawText(const std::string &text, const glm::vec2 &pos, float scale);
   void Clear();
 };

@@ -1,23 +1,21 @@
 #include "Ball.hpp"
 #include <random>
 
-void Ball::Init(glm::vec2 playerPos, uint32_t winWidth, uint32_t winHeight)
+void Ball::Init(glm::vec2 playerPos)
 {
   std::random_device rd;
   std::mt19937 gen(rd());
 
-  std::uniform_real_distribution<float> xPos(-1.0f, 1.0f);
-  std::uniform_real_distribution<float> speed(200.0f, 600.0f);
+  std::uniform_real_distribution<float> xPos(-0.5f, 0.5f);
+  std::uniform_real_distribution<float> speed(250.0f, 500.0f);
 
   float randX = xPos(gen);
 
-  this->winWidth = winWidth;
-  this->winHeight = winHeight;
   this->speed = speed(gen);
   this->velocity = {randX, 1.0f};
   this->size = {25.0f, 25.0f};
   this->color = {1.0f, 1.0f, 1.0f, 1.0f};
-  this->pos = {playerPos.x, playerPos.y - 200.0f};
+  this->pos = {playerPos.x, playerPos.y - 250.0f};
 }
 void Ball::Move(float dt)
 {
@@ -25,7 +23,7 @@ void Ball::Move(float dt)
   this->pos += normalizedVel * this->speed * dt;
 }
 
-void Ball::CheckCollision(const GameObject &paddle)
+bool Ball::CheckCollision(const Paddle &paddle, uint32_t &lives)
 {
   glm::vec2 borderNormal = {0.0f, 0.0f};
   glm::vec2 reflectedVel;
@@ -45,6 +43,10 @@ void Ball::CheckCollision(const GameObject &paddle)
   {
     borderNormal = {0.0f, 1.0f};
   }
+  else if (pos.y > winHeight)
+  {
+    return true;
+  }
 
   float paddleLeft = paddle.pos.x - paddle.size.x / 2.0f;
 
@@ -58,13 +60,14 @@ void Ball::CheckCollision(const GameObject &paddle)
 
   if (borderNormal.x == 0.0f && borderNormal.y == 0.0f)
   {
-    return;
+    return false;
   }
 
   reflectedVel = glm::reflect(this->velocity, borderNormal);
 
   this->pos += reflectedVel;
   this->velocity = reflectedVel;
+  return false;
 }
 
 void Ball::CheckCollision(Brick &brick)

@@ -7,6 +7,13 @@
 #include "MyMath.hpp"
 #include <map>
 
+struct TextVertex
+{
+  glm::vec3 Position;
+  glm::vec2 TexCoords;
+  float TexIndex;
+};
+
 struct Character
 {
   uint32_t TextureID;
@@ -18,15 +25,19 @@ struct Character
 class TextRenderer
 {
 private:
-  std::map<char, Character> Characters;
   FT_Library m_Ft;
   FT_Face m_Face;
 
 public:
-  TextRenderer();
-  ~TextRenderer();
+  std::map<char, Character> Characters;
+
+  TextRenderer(const TextRenderer &) = delete;
+
+  static TextRenderer &Get();
 
   bool Init();
   void LoadCharacters();
-  void RenderText(std::string text);
+
+private:
+  TextRenderer() {}
 };

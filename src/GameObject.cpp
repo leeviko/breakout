@@ -1,6 +1,6 @@
 #include "GameObject.hpp"
 
-GameObject::GameObject(Renderer &renderer) : renderer(&renderer)
+GameObject::GameObject(Renderer &renderer, uint32_t winWidth, uint32_t winHeight) : renderer(&renderer), winWidth(winWidth), winHeight(winHeight)
 {
 }
 

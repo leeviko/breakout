@@ -5,7 +5,7 @@
 #include <random>
 #include "TextRenderer.hpp"
 
-Game::Game(uint32_t width, uint32_t height) : Width(width), Height(height), player(GameObject(renderer)), state(GAME_MENU)
+Game::Game(uint32_t width, uint32_t height) : Width(width), Height(height), paddle(Paddle(renderer, width, height)), state(GAME_MENU), lives(1)
 {
 }
 Game::~Game()
@@ -14,21 +14,9 @@ Game::~Game()
   renderer.Clear();
 }
 
-void Game::Init()
+void ResetBricks(Renderer &renderer, uint32_t width, uint32_t height, float brickWidth, float brickHeight, std::vector<Brick> &bricks)
 {
-  ResourceManager::LoadShader("D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.vert", "D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.frag", "quad");
-
-  Renderer renderer;
-  this->renderer = renderer;
-  this->renderer.Init();
-
-  TextRenderer textRenderer;
-  this->textRenderer = textRenderer;
-  textRenderer.Init();
-  textRenderer.LoadCharacters();
-
-  this->brickHeight = 25.0f;
-  this->brickWidth = 100.0f;
+  bricks.clear();
 
   float brickPadding = 15.0f;
   float borderPadding = 50.0f;
@@ -37,7 +25,7 @@ void Game::Init()
   uint32_t columns = 10;
 
   glm::vec2 totalBrickSize = glm::vec2(brickWidth, brickHeight) + glm::vec2(brickPadding, brickPadding);
-  glm::vec2 boardStartPos = {Width - (columns * totalBrickSize.x), brickHeight + 25.0f};
+  glm::vec2 boardStartPos = {width - (columns * totalBrickSize.x), brickHeight + 25.0f};
 
   for (uint32_t i = 0; i < rows; i++)
   {
@@ -45,7 +33,7 @@ void Game::Init()
 
     for (uint32_t j = 0; j < columns; j++)
     {
-      Brick brick(renderer);
+      Brick brick(renderer, width, height);
       brick.Init({boardStartPos.x + (j * totalBrickSize.x), boardStartPos.y + (i * totalBrickSize.y)}, {brickWidth, brickHeight}, brickLives);
 
       bricks.push_back(brick);
@@ -61,15 +49,33 @@ void Game::Init()
 
     bricks[brickIndex(gen)].type = ADD_BALL;
   }
+}
 
-  float playerWidth = 150.0f;
-  float playerHeight = 25.0f;
+void Game::Init()
+{
+  ResourceManager::LoadShader("D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.vert", "D:/Dev/Cpp/OpenGL/breakout/src/shaders/quad.frag", "quad");
+  ResourceManager::LoadShader("D:/Dev/Cpp/OpenGL/breakout/src/shaders/font.vert", "D:/Dev/Cpp/OpenGL/breakout/src/shaders/font.frag", "font");
 
-  player.Init({Width / 2.0f, Height - playerHeight * 2.0f}, {playerWidth, playerHeight}, {0.8f, 0.2f, 0.3f, 1.0f});
+  Renderer renderer;
+  this->renderer = renderer;
+  this->renderer.Init();
 
-  Ball ball(renderer);
+  TextRenderer::Get().Init();
+  TextRenderer::Get().LoadCharacters();
 
-  ball.Init(player.pos, Width, Height);
+  this->brickHeight = 25.0f;
+  this->brickWidth = 100.0f;
+
+  ResetBricks(renderer, Width, Height, brickWidth, brickHeight, bricks);
+
+  float paddleWidth = 300.0f;
+  float paddleHeight = 25.0f;
+
+  paddle.Init({Width / 2.0f, Height - paddleHeight * 2.0f}, {paddleWidth, paddleHeight}, {0.8f, 0.2f, 0.3f, 1.0f});
+
+  Ball ball(renderer, Width, Height);
+
+  ball.Init(paddle.pos);
   balls.push_back(ball);
 }
 
@@ -77,41 +83,85 @@ void Game::Update(float dt)
 {
   glm::mat4 proj = glm::ortho(0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, -1.0f, 1.0f);
 
-  ResourceManager::GetShader("quad").Use();
-  ResourceManager::GetShader("quad").SetMatrix4("u_MVP", proj, false);
+  ResourceManager::GetShader("quad").Use().SetMatrix4("u_MVP", proj, false);
+  ResourceManager::GetShader("font").Use().SetMatrix4("proj", proj, false);
 
-  for (uint32_t i = 0; i < balls.size(); i++)
+  if (state == GAME_ACTIVE)
   {
-    balls[i].Move(dt);
+    if (lives == 0 || bricks.size() == 0)
+    {
+      paddle.Reset();
+      balls.clear();
+
+      ResetBricks(renderer, Width, Height, brickWidth, brickHeight, bricks);
+
+      Ball ball(renderer, Width, Height);
+      ball.Init(paddle.pos);
+      balls.push_back(ball);
+      state = lives == 0 ? GAME_LOST : GAME_WON;
+    }
   }
 
-  for (uint32_t i = 0; i < balls.size(); i++)
+  if (state == GAME_ACTIVE)
   {
-    balls[i].CheckCollision(player);
-
-    for (uint32_t j = 0; j < bricks.size(); j++)
+    for (uint32_t i = 0; i < balls.size(); i++)
     {
-      balls[i].CheckCollision(bricks[j]);
-      if (bricks[j].lives <= 0)
+      balls[i].Move(dt);
+    }
+
+    paddle.Move(dt);
+    paddle.CheckCollision();
+
+    for (uint32_t i = 0; i < balls.size(); i++)
+    {
+      bool remove = balls[i].CheckCollision(paddle, lives);
+      if (remove)
       {
-        if (bricks[j].type == ADD_BALL)
+        lives--;
+        balls.erase(balls.begin() + i);
+        continue;
+      }
+      for (uint32_t j = 0; j < bricks.size(); j++)
+      {
+        balls[i].CheckCollision(bricks[j]);
+        if (bricks[j].lives <= 0)
         {
-          Ball ball(renderer);
-          ball.Init(player.pos, Width, Height);
-          balls.push_back(ball);
+          if (bricks[j].type == ADD_BALL)
+          {
+            lives++;
+            Ball ball(renderer, Width, Height);
+            ball.Init(paddle.pos);
+            balls.push_back(ball);
+          }
+          bricks.erase(bricks.begin() + j);
         }
-        bricks.erase(bricks.begin() + j);
       }
     }
   }
 }
+
 void Game::Render()
 {
   ResourceManager::GetShader("quad").Use();
 
   renderer.BeginBatch();
 
-  player.Draw();
+  if (state == GAME_MENU)
+  {
+    renderer.DrawText("Start by pressing SPACE", {Width / 2.0f - 250.0f, Height / 2.0f + 50.0f}, 1.0f);
+  }
+  else if (state == GAME_LOST)
+  {
+    renderer.DrawText("You LOST!", {Width / 2.0f - 100.0f, Height / 2.0f + 50.0f}, 1.0f);
+    renderer.DrawText("Play again by pressing SPACE", {Width / 2.0f - 250.0f, Height / 2.0f + 100.0f}, 1.0f);
+  }
+  else if (state == GAME_WON)
+  {
+    renderer.DrawText("You WON!", {Width / 2.0f - 100.0f, Height / 2.0f + 50.0f}, 1.0f);
+    renderer.DrawText("Play again by pressing SPACE", {Width / 2.0f - 250.0f, Height / 2.0f + 100.0f}, 1.0f);
+  }
+
+  paddle.Draw();
   for (uint32_t i = 0; i < bricks.size(); i++)
   {
     bricks[i].Draw();
@@ -128,31 +178,28 @@ void Game::Render()
 
 void Game::ProcessInput(float dt, uint32_t leftKey, uint32_t rightKey, uint32_t spaceKey)
 {
-  if (leftKey == GLFW_PRESS)
+  if (state == GAME_ACTIVE)
   {
-    player.velocity = {-1.0f, 0.0f};
-
-    player.pos += player.velocity * 500.0f * dt;
-
-    if (player.pos.x <= 0.0f + player.size.x / 2.0f)
+    if (leftKey == GLFW_PRESS)
     {
-      player.pos.x = 0.0f + player.size.x / 2.0f;
+      paddle.velocity = {-1.0f, 0.0f};
+    }
+    else if (rightKey == GLFW_PRESS)
+    {
+      paddle.velocity = {1.0f, 0.0f};
+    }
+    else
+    {
+      paddle.velocity = {0.0f, 0.0f};
     }
   }
-  else if (rightKey == GLFW_PRESS)
-  {
-    player.velocity = {1.0f, 0.0f};
 
-    player.pos += player.velocity * 500.0f * dt;
-    if (player.pos.x >= Width - player.size.x / 2.0f)
-    {
-      player.pos.x = Width - player.size.x / 2.0f;
-    }
-  }
-  if (spaceKey == GLFW_PRESS)
+  if (state != GAME_ACTIVE)
   {
-    Ball ball(renderer);
-    ball.Init(player.pos, Width, Height);
-    balls.push_back(ball);
+    if (spaceKey == GLFW_PRESS)
+    {
+      lives = 1;
+      state = GAME_ACTIVE;
+    }
   }
 }

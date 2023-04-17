@@ -18,7 +18,6 @@ enum GameState
 class Game
 {
 private:
-  TextRenderer textRenderer;
   Renderer renderer;
   uint32_t Width, Height;
   GameState state;
@@ -27,7 +26,8 @@ private:
   std::vector<Brick> bricks;
   std::vector<Ball> balls;
 
-  GameObject player;
+  Paddle paddle;
+  uint32_t lives;
 
 public:
   Game(uint32_t width, uint32_t height);
